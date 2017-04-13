@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/blasphemy/glimit.svg?branch=master)](https://travis-ci.org/blasphemy/glimit)
 # glimit
 A Go Rate Limiter backed by gorm
 
