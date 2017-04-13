@@ -7,7 +7,7 @@ A Go Rate Limiter backed by gorm
 * It's missing a lot of safety checks (you could accidentally delete a lot of rate limiting data)
 * There's not much keeping you from "losing" a limiter and accumulating garbage, for example if you associated it with user sessions, you may want to do some housekeeping yourself.
 * It has not been tested with very high rates yet, I wouldn't try it on anything mission critical, for casual use it should be good enough.
-* I need to add stores other than gorm
+* I need to add an interface to use stores other than gorm
 * It does not supply a blocking function, as that could could cause problems. If you want one, I suggest you implement one yourself in your application with the required precision.
 
 # docs
