@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/blasphemy/glimit.svg?branch=master)](https://travis-ci.org/blasphemy/glimit)
 [![Coverage Status](https://coveralls.io/repos/github/blasphemy/glimit/badge.svg?branch=master)](https://coveralls.io/github/blasphemy/glimit?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/blasphemy/glimit)](https://goreportcard.com/report/github.com/blasphemy/glimit)
 # glimit
 A Go Rate Limiter backed by gorm
 
