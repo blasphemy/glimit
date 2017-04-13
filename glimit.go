@@ -54,8 +54,8 @@ func NewLimiter(actions int, interval time.Duration, db *gorm.DB) (*Limiter, err
 	return newLimit, nil
 }
 
-//Take attemps to do an "action". if there is an error determining if an action is possible
-// or writing the action the database, the returned action count will be 0.
+//Take attempts to do an "action". if there is an error determining if an action is possible
+// or writing the action to the database, the returned action count will be 0.
 // If the rate is exceeded, the total count will be returned, as well as ErrRateLimitExceeded.
 // If the Take is successful, it will return the amount of actions within the period,
 // and no errors.
