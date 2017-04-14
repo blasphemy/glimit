@@ -203,3 +203,10 @@ func TestMulti(t *testing.T) {
 		}
 	}
 }
+
+func TestCleanupAll(t *testing.T) {
+	err := CleanupAll(limiter.db)
+	if err != nil {
+		t.Fail()
+	}
+}

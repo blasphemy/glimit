@@ -145,3 +145,21 @@ func (l *Limiter) Save() error {
 	}
 	return l.db.Model(&Limiter{}).Where(l.ID).Update(l).Error
 }
+
+//CleanupAll removes all expired actions from all limiters in the database.
+// possibly a very expensive call.
+func CleanupAll(db *gorm.DB) error {
+	limiters := []Limiter{}
+	err := db.Find(&limiters).Error
+	if err != nil {
+		return err
+	}
+	for _, x := range limiters {
+		x.db = db
+		err = x.Cleanup()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
