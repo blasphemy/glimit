@@ -194,8 +194,8 @@ func TestMulti(t *testing.T) {
 	}
 	time.Sleep(20 * time.Second)
 	count, err := limiter.Take()
-	if count > 100 {
-		t.Errorf("count should be less than 100, is %d", count)
+	if count > 5 {
+		t.Errorf("count should be less than 5, is %d", count)
 	}
 	if err != ErrRateLimitExceeded {
 		t.Error(err.Error())
