@@ -10,6 +10,8 @@ import (
 var (
 	//ErrRateLimitExceeded Returned when a rate limit is exceeded
 	ErrRateLimitExceeded = errors.New("Rate Limit Exceeded")
+	//ErrInvalidID occurs when a limiter with an invalid ID is used.
+	ErrInvalidID = errors.New("Invalid ID")
 )
 
 //Limiter represents the rate limiter
@@ -60,9 +62,13 @@ func NewLimiter(actions int, interval time.Duration, db *gorm.DB) (*Limiter, err
 // If the Take is successful, it will return the amount of actions within the period,
 // and no errors.
 func (l *Limiter) Take() (int, error) {
+	_, err := uuid.Parse(l.ID)
+	if err != nil {
+		return 0, ErrInvalidID
+	}
 	var count int
 	calculated := time.Now().Truncate(l.Interval)
-	err := l.db.Model(&Action{}).Where("timestamp >= ? AND limiter_id = ?", calculated, l.ID).Count(&count).Error
+	err = l.db.Model(&Action{}).Where("timestamp >= ? AND limiter_id = ?", calculated, l.ID).Count(&count).Error
 	if err != nil {
 		return 0, err
 	}
@@ -87,14 +93,22 @@ func (l *Limiter) Take() (int, error) {
 
 //Cleanup deletes all "expired" actions associated with a limiter
 func (l *Limiter) Cleanup() error {
+	_, err := uuid.Parse(l.ID)
+	if err != nil {
+		return ErrInvalidID
+	}
 	calculated := time.Now().Truncate(l.Interval)
-	err := l.db.Where("timestamp <= ? AND limiter_id = ?", calculated, l.ID).Delete(Action{}).Error
+	err = l.db.Where("timestamp <= ? AND limiter_id = ?", calculated, l.ID).Delete(Action{}).Error
 	return err
 }
 
 //Delete deletes the limiter as well as all associated actions
 func (l *Limiter) Delete() error {
-	err := l.db.Delete(Action{}, &Action{LimiterID: l.ID}).Error
+	_, err := uuid.Parse(l.ID)
+	if err != nil {
+		return ErrInvalidID
+	}
+	err = l.db.Delete(Action{}, &Action{LimiterID: l.ID}).Error
 	if err != nil {
 		return err
 	}
@@ -104,8 +118,12 @@ func (l *Limiter) Delete() error {
 
 //ByID retrieves a limiter from it's ID
 func ByID(ID string, db *gorm.DB) (*Limiter, error) {
+	_, err := uuid.Parse(ID)
+	if err != nil {
+		return nil, ErrInvalidID
+	}
 	l := &Limiter{}
-	err := db.First(l, &Limiter{ID: ID}).Error
+	err = db.First(l, &Limiter{ID: ID}).Error
 	if err != nil {
 		return nil, err
 	}

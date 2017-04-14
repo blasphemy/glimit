@@ -123,3 +123,25 @@ func TestEnsureNoActions(t *testing.T) {
 		t.Error("Expected 0 got ", count)
 	}
 }
+
+func TestInvalidIDDelete(t *testing.T) {
+	l := &Limiter{
+		ID: "",
+		db: db,
+	}
+	err := l.Delete()
+	if err != ErrInvalidID {
+		t.Fail()
+	}
+}
+
+func TestInvalidIDDeleteNotEmpty(t *testing.T) {
+	l := &Limiter{
+		ID: "TestID",
+		db: db,
+	}
+	err := l.Delete()
+	if err != ErrInvalidID {
+		t.Fail()
+	}
+}
