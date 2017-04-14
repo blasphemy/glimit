@@ -9,7 +9,8 @@ A Go Rate Limiter backed by gorm
 * There's not much keeping you from "losing" a limiter and accumulating garbage, for example if you associated it with user sessions, you may want to do some housekeeping yourself.
 * I need to add an interface to use stores other than gorm
 * It does not supply a blocking function, as that could could cause problems. If you want one, I suggest you implement one yourself in your application with the required precision.
-* I've added a very basic high contention test. As far as I can tell, the accuracy of the rate limit may depend on your database. With go's sqlite driver high contention seems to be problematic (25 calls at the same time). With other databases, which is probably a more likely use case, it may perform better, but testing is needed. May also depend on isolation level.
+* After a fair amount of testing I'm fairly comfortable with it's behavior in high load situations. However this may depend on your database.
+
 
 # docs
 * The comments and godoc should be enough to get you started
