@@ -161,7 +161,7 @@ func TestNilSave(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	var err error
-	limiter, err := NewLimiter(5, 10*time.Second, db)
+	limiter, err = NewLimiter(5, 10*time.Second, db)
 	if err != nil {
 		t.Fail()
 	}
@@ -177,5 +177,27 @@ func TestUpdate(t *testing.T) {
 	}
 	if limiter2.Interval != 20*time.Second {
 		t.Fail()
+	}
+}
+
+func TestMulti(t *testing.T) {
+	var err error
+	limiter, err = NewLimiter(5, 5*time.Minute, db)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	for i := 0; i < 25; i++ {
+		go func() {
+			time.Sleep(time.Second * 1)
+			limiter.Take()
+		}()
+	}
+	time.Sleep(20 * time.Second)
+	count, err := limiter.Take()
+	if count > 100 {
+		t.Errorf("count should be less than 100, is %d", count)
+	}
+	if err != ErrRateLimitExceeded {
+		t.Error(err.Error())
 	}
 }
