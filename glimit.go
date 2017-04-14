@@ -51,34 +51,45 @@ func NewLimiter(actions int, interval time.Duration, db *gorm.DB) (*Limiter, err
 	return newLimit, nil
 }
 
-//Take attempts to do an "action". if there is an error determining if an action is possible
-// or writing the action to the database, the returned action count will be 0.
-// If the rate is exceeded, the total count will be returned, as well as ErrRateLimitExceeded.
-// If the Take is successful, it will return the amount of actions within the period,
-// and no errors.
+/*Take attempts to do an "action". if there is an error determining if an action
+   is possible or writing the action to the database, the returned action count
+	 will be 0. If the rate is exceeded, the total count will be returned,
+	 as well ass ErrRateLimitExceeded. If the Take is successful, it will return
+	 the number of actions and a nil error.
+*/
 func (l *Limiter) Take() (int, error) {
 	if l.ID == 0 {
 		return 0, ErrInvalidID
 	}
+	tx := l.db.Begin()
 	limiter := &Limiter{}
-	err := l.db.Find(limiter, l.ID).Error
+	err := tx.Find(limiter, l.ID).Error
 	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 	var count int
 	calculated := time.Now().Truncate(limiter.Interval)
-	err = l.db.Model(&Action{}).Where("timestamp >= ? AND limiter_id = ?", calculated, limiter.ID).Count(&count).Error
+	err = tx.Model(&Action{}).Where("timestamp >= ? AND limiter_id = ?",
+		calculated,
+		limiter.ID).Count(&count).Error
 	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 	if count >= limiter.Times {
+		tx.Rollback()
 		return count, ErrRateLimitExceeded
 	}
-	newAction := &Action{
+	err = tx.Save(&Action{
 		Timestamp: time.Now(),
-		LimiterID: l.ID,
+		LimiterID: limiter.ID,
+	}).Error
+	if err != nil {
+		tx.Rollback()
+		return 0, err
 	}
-	err = l.db.Save(newAction).Error
+	err = tx.Commit().Error
 	if err != nil {
 		return 0, err
 	}
@@ -96,7 +107,9 @@ func (l *Limiter) Cleanup() error {
 		return err
 	}
 	calculated := time.Now().Truncate(limiter.Interval)
-	err = l.db.Where("timestamp <= ? AND limiter_id = ?", calculated, limiter.ID).Delete(Action{}).Error
+	err = l.db.Where("timestamp <= ? AND limiter_id = ?",
+		calculated,
+		limiter.ID).Delete(Action{}).Error
 	return err
 }
 

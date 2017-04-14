@@ -197,7 +197,7 @@ func TestMulti(t *testing.T) {
 	if count > 5 {
 		t.Errorf("count should be less than 5, is %d", count)
 	}
-	if err != ErrRateLimitExceeded {
+	if err != nil {
 		t.Error(err.Error())
 	}
 }
