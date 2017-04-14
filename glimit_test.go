@@ -124,24 +124,58 @@ func TestEnsureNoActions(t *testing.T) {
 	}
 }
 
-func TestInvalidIDDelete(t *testing.T) {
-	l := &Limiter{
-		ID: "",
-		db: db,
+func TestNilTake(t *testing.T) {
+	l := &Limiter{}
+	count, err := l.Take()
+	if err == nil {
+		t.Fail()
 	}
-	err := l.Delete()
-	if err != ErrInvalidID {
+	if count > 0 {
 		t.Fail()
 	}
 }
 
-func TestInvalidIDDeleteNotEmpty(t *testing.T) {
-	l := &Limiter{
-		ID: "TestID",
-		db: db,
-	}
+func TestNilDelete(t *testing.T) {
+	l := &Limiter{}
 	err := l.Delete()
-	if err != ErrInvalidID {
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestNilCleanup(t *testing.T) {
+	l := &Limiter{}
+	err := l.Cleanup()
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestNilSave(t *testing.T) {
+	l := &Limiter{}
+	err := l.Save()
+	if err == nil {
+		t.Fail()
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	var err error
+	limiter, err := NewLimiter(5, 10*time.Second, db)
+	if err != nil {
+		t.Fail()
+	}
+	limiter.Interval = 20 * time.Second
+	err = limiter.Save()
+	if err != nil {
+		t.Fail()
+	}
+	limiter2 := &Limiter{}
+	err = db.Find(limiter2, limiter.ID).Error
+	if err != nil {
+		t.Fail()
+	}
+	if limiter2.Interval != 20*time.Second {
 		t.Fail()
 	}
 }

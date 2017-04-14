@@ -2,7 +2,6 @@ package glimit
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"time"
 )
@@ -17,7 +16,7 @@ var (
 //Limiter represents the rate limiter
 type Limiter struct {
 	db       *gorm.DB
-	ID       string
+	ID       uint
 	Times    int
 	Interval time.Duration
 }
@@ -25,8 +24,8 @@ type Limiter struct {
 //Action represents the Action being ratelimited.
 type Action struct {
 	Timestamp time.Time `gorm:"index"`
-	ID        string
-	LimiterID string `gorm:"index"`
+	ID        uint
+	LimiterID uint `gorm:"index"`
 }
 
 //DoMigrations adds the models to the database. Should be run once,
@@ -34,22 +33,18 @@ type Action struct {
 func DoMigrations(db *gorm.DB) {
 	db.AutoMigrate(&Limiter{})
 	db.AutoMigrate(&Action{})
+	db.Model(&Action{}).AddForeignKey("limiter_id", "limiters", "RESTRICT", "RESTRICT")
 }
 
 //NewLimiter Creates a new limiter with the specified arguments and saves it
 // to the database.
 func NewLimiter(actions int, interval time.Duration, db *gorm.DB) (*Limiter, error) {
-	newUUID, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
 	newLimit := &Limiter{
 		db:       db,
-		ID:       newUUID.String(),
 		Times:    actions,
 		Interval: interval,
 	}
-	err = db.Save(newLimit).Error
+	err := db.Save(newLimit).Error
 	if err != nil {
 		return nil, err
 	}
@@ -62,29 +57,28 @@ func NewLimiter(actions int, interval time.Duration, db *gorm.DB) (*Limiter, err
 // If the Take is successful, it will return the amount of actions within the period,
 // and no errors.
 func (l *Limiter) Take() (int, error) {
-	_, err := uuid.Parse(l.ID)
-	if err != nil {
+	if l.ID == 0 {
 		return 0, ErrInvalidID
 	}
-	var count int
-	calculated := time.Now().Truncate(l.Interval)
-	err = l.db.Model(&Action{}).Where("timestamp >= ? AND limiter_id = ?", calculated, l.ID).Count(&count).Error
+	limiter := &Limiter{}
+	err := l.db.Find(limiter, l.ID).Error
 	if err != nil {
 		return 0, err
 	}
-	if count >= l.Times {
+	var count int
+	calculated := time.Now().Truncate(limiter.Interval)
+	err = l.db.Model(&Action{}).Where("timestamp >= ? AND limiter_id = ?", calculated, limiter.ID).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	if count >= limiter.Times {
 		return count, ErrRateLimitExceeded
 	}
-	newActionID, err := uuid.NewUUID()
-	if err != nil {
-		return 0, err
-	}
 	newAction := &Action{
-		ID:        newActionID.String(),
 		Timestamp: time.Now(),
 		LimiterID: l.ID,
 	}
-	err = l.db.Save(&newAction).Error
+	err = l.db.Save(newAction).Error
 	if err != nil {
 		return 0, err
 	}
@@ -93,40 +87,48 @@ func (l *Limiter) Take() (int, error) {
 
 //Cleanup deletes all "expired" actions associated with a limiter
 func (l *Limiter) Cleanup() error {
-	_, err := uuid.Parse(l.ID)
-	if err != nil {
+	if l.ID == 0 {
 		return ErrInvalidID
 	}
-	calculated := time.Now().Truncate(l.Interval)
-	err = l.db.Where("timestamp <= ? AND limiter_id = ?", calculated, l.ID).Delete(Action{}).Error
+	limiter := &Limiter{}
+	err := l.db.Find(limiter, l.ID).Error
+	if err != nil {
+		return err
+	}
+	calculated := time.Now().Truncate(limiter.Interval)
+	err = l.db.Where("timestamp <= ? AND limiter_id = ?", calculated, limiter.ID).Delete(Action{}).Error
 	return err
 }
 
 //Delete deletes the limiter as well as all associated actions
 func (l *Limiter) Delete() error {
-	_, err := uuid.Parse(l.ID)
-	if err != nil {
+	if l.ID == 0 {
 		return ErrInvalidID
 	}
-	err = l.db.Delete(Action{}, &Action{LimiterID: l.ID}).Error
+	err := l.db.Delete(Action{}, &Action{LimiterID: l.ID}).Error
 	if err != nil {
 		return err
 	}
-	err = l.db.Delete(Limiter{}, &Limiter{ID: l.ID}).Error
+	err = l.db.Delete(Limiter{}, l.ID).Error
 	return err
 }
 
 //ByID retrieves a limiter from it's ID
-func ByID(ID string, db *gorm.DB) (*Limiter, error) {
-	_, err := uuid.Parse(ID)
-	if err != nil {
-		return nil, ErrInvalidID
-	}
+func ByID(ID uint, db *gorm.DB) (*Limiter, error) {
 	l := &Limiter{}
-	err = db.First(l, &Limiter{ID: ID}).Error
+	err := db.First(l, ID).Error
 	if err != nil {
 		return nil, err
 	}
 	l.db = db
 	return l, nil
+}
+
+//Save allows you to update the attributes of a limiter. If you make any
+// changes to a limiter, simply Save() it, and it will go back to the database
+func (l *Limiter) Save() error {
+	if l.ID == 0 {
+		return ErrInvalidID
+	}
+	return l.db.Model(&Limiter{}).Where(l.ID).Update(l).Error
 }
