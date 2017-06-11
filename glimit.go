@@ -69,7 +69,7 @@ func (l *Limiter) Take() (int, error) {
 		return 0, err
 	}
 	var count int
-	calculated := time.Now().Truncate(limiter.Interval)
+	calculated := time.Now().Add(-limiter.Interval)
 	err = tx.Model(&Action{}).Where("timestamp >= ? AND limiter_id = ?",
 		calculated,
 		limiter.ID).Count(&count).Error
@@ -106,7 +106,7 @@ func (l *Limiter) Cleanup() error {
 	if err != nil {
 		return err
 	}
-	calculated := time.Now().Truncate(limiter.Interval)
+	calculated := time.Now().Add(-limiter.Interval)
 	err = l.db.Where("timestamp <= ? AND limiter_id = ?",
 		calculated,
 		limiter.ID).Delete(Action{}).Error
